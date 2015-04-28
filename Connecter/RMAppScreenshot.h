@@ -11,7 +11,7 @@
 
 #import <Foundation/Foundation.h>
 
-@interface RMAppScreenshot : NSObject <RMXMLObject>
+@interface RMAppScreenshot : NSObject <RMXMLObject, NSCopying>
 
 @property (nonatomic, assign) RMAppScreenshotType displayTarget;
 @property (nonatomic, assign) int position;

@@ -102,6 +102,20 @@ NSString *const RMAppDataArrangedObjectsKVOPath = @"arrangedObjects";
     return [NSString stringWithFormat: @"%@ - Connecter", displayName];
 }
 
+- (void)setScreenshotFileName:(RMAppScreenshot *)screenshot withLocale:(RMAppLocale *)locale andVersion:(RMAppVersion *)version
+{
+    if (screenshot.imageData != nil && [screenshot.filename hasPrefix:locale.localeName] == NO) {
+        NSString *versionString = [version.versionString stringByReplacingOccurrencesOfString:@"." withString:@""];
+        versionString = [versionString stringByReplacingOccurrencesOfString:@"-" withString:@""];
+        versionString = [versionString stringByReplacingOccurrencesOfString:@"_" withString:@""];
+        screenshot.filename = [NSString stringWithFormat: @"%@%@%d%d.png",
+                               locale.localeName,
+                               versionString,
+                               (int)screenshot.displayTarget,
+                               (int)screenshot.position];
+    }
+}
+
 #pragma mark - Actions
 
 - (IBAction)applyTitleToAll:(id)sender
@@ -109,6 +123,9 @@ NSString *const RMAppDataArrangedObjectsKVOPath = @"arrangedObjects";
     [self.window makeFirstResponder:nil];
     RMAppLocale *activeLocale = [self.localesController.selectedObjects firstObject];
     for (RMAppLocale *locale in self.localesController.content) {
+        if (locale.localeName == activeLocale.localeName)
+            continue;
+
         locale.title = activeLocale.title;
     }
 }
@@ -118,6 +135,9 @@ NSString *const RMAppDataArrangedObjectsKVOPath = @"arrangedObjects";
     [self.window makeFirstResponder:nil];
     RMAppLocale *activeLocale = [self.localesController.selectedObjects firstObject];
     for (RMAppLocale *locale in self.localesController.content) {
+        if (locale.localeName == activeLocale.localeName)
+            continue;
+
         locale.appDescription = activeLocale.appDescription;
     }
 }
@@ -127,6 +147,9 @@ NSString *const RMAppDataArrangedObjectsKVOPath = @"arrangedObjects";
     [self.window makeFirstResponder:nil];
     RMAppLocale *activeLocale = [self.localesController.selectedObjects firstObject];
     for (RMAppLocale *locale in self.localesController.content) {
+        if (locale.localeName == activeLocale.localeName)
+            continue;
+
         locale.whatsNew = activeLocale.whatsNew;
     }
 }
@@ -136,6 +159,9 @@ NSString *const RMAppDataArrangedObjectsKVOPath = @"arrangedObjects";
     [self.window makeFirstResponder:nil];
     RMAppLocale *activeLocale = [self.localesController.selectedObjects firstObject];
     for (RMAppLocale *locale in self.localesController.content) {
+        if (locale.localeName == activeLocale.localeName)
+            continue;
+
         locale.softwareURL = activeLocale.softwareURL;
     }
 }
@@ -145,6 +171,9 @@ NSString *const RMAppDataArrangedObjectsKVOPath = @"arrangedObjects";
     [self.window makeFirstResponder:nil];
     RMAppLocale *activeLocale = [self.localesController.selectedObjects firstObject];
     for (RMAppLocale *locale in self.localesController.content) {
+        if (locale.localeName == activeLocale.localeName)
+            continue;
+
         locale.supportURL = activeLocale.supportURL;
     }
 }
@@ -154,6 +183,9 @@ NSString *const RMAppDataArrangedObjectsKVOPath = @"arrangedObjects";
     [self.window makeFirstResponder:nil];
     RMAppLocale *activeLocale = [self.localesController.selectedObjects firstObject];
     for (RMAppLocale *locale in self.localesController.content) {
+        if (locale.localeName == activeLocale.localeName)
+            continue;
+
         locale.privacyURL = activeLocale.privacyURL;
     }
 }
@@ -163,16 +195,28 @@ NSString *const RMAppDataArrangedObjectsKVOPath = @"arrangedObjects";
     [self.window makeFirstResponder:nil];
     RMAppLocale *activeLocale = [self.localesController.selectedObjects firstObject];
     for (RMAppLocale *locale in self.localesController.content) {
-        locale.keywords = activeLocale.keywords;
+        if (locale.localeName == activeLocale.localeName)
+            continue;
+
+        locale.keywords = [NSArray arrayWithArray:activeLocale.keywords];
     }
 }
 
 - (IBAction)applyScreenshotsToAll:(id)sender
 {
     [self.window makeFirstResponder:nil];
+    RMAppVersion *activeVersion = [self.versionsController.selectedObjects firstObject];    
     RMAppLocale *activeLocale = [self.localesController.selectedObjects firstObject];
     for (RMAppLocale *locale in self.localesController.content) {
-        locale.screenshots = activeLocale.screenshots;
+
+        if (locale.localeName == activeLocale.localeName)
+            continue;
+        
+        // Copy Screenshots and set new filename
+        locale.screenshots = [[NSMutableArray alloc] initWithArray:activeLocale.screenshots copyItems:YES];
+        for (RMAppScreenshot *screenshot in locale.screenshots) {
+            [self setScreenshotFileName:screenshot withLocale:locale andVersion:activeVersion];
+        }
     }
 }
 
@@ -228,19 +272,11 @@ NSString *const RMAppDataArrangedObjectsKVOPath = @"arrangedObjects";
     
     // update screenshot models with correct displayTarget & update filenames
     RMAppScreenshotType currentDisplayTarget = (RMAppScreenshotType)[self.tabView.selectedTabViewItem.identifier integerValue];
+    
     for (RMAppScreenshot *screenshot in controller.screenshots) {
         screenshot.displayTarget = currentDisplayTarget;
         
-        if (screenshot.imageData != nil && [screenshot.filename hasPrefix:activeLocale.localeName] == NO) {
-            NSString *versionString = [activeVersion.versionString stringByReplacingOccurrencesOfString:@"." withString:@""];
-            versionString = [versionString stringByReplacingOccurrencesOfString:@"-" withString:@""];
-            versionString = [versionString stringByReplacingOccurrencesOfString:@"_" withString:@""];
-            screenshot.filename = [NSString stringWithFormat: @"%@%@%d%d.png",
-                                   activeLocale.localeName,
-                                   versionString,
-                                   (int)screenshot.displayTarget,
-                                   (int)screenshot.position];
-        }
+        [self setScreenshotFileName:screenshot withLocale:activeLocale andVersion:activeVersion];
     }
     
     // update model with new screenshots for current displayTarget

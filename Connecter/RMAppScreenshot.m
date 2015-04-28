@@ -89,5 +89,22 @@ NSString *const RMAppScreenshotChecksumTypeStringMD5 = @"md5";
     return (RMAppScreenshotTypeValueTransformer*)[NSValueTransformer valueTransformerForName:RMAppScreenshotTypeValueTransformerName];
 }
 
+#pragma mark NSNSCopying
+
+- (id)copyWithZone:(NSZone *)zone {
+    RMAppScreenshot *screenshot = [[RMAppScreenshot alloc] init];
+    
+    screenshot.displayTarget = self.displayTarget;
+    screenshot.position = self.position;
+
+    screenshot.imageData = [self.imageData copy];
+    
+    screenshot.checksum = [self.checksum copy];
+    screenshot.checksumType = [self.checksumType copy];
+    screenshot.size = self.size;
+    
+    return screenshot;
+}
+
 @end
 
