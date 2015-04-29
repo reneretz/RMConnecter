@@ -104,16 +104,14 @@ NSString *const RMAppDataArrangedObjectsKVOPath = @"arrangedObjects";
 
 - (void)setScreenshotFileName:(RMAppScreenshot *)screenshot withLocale:(RMAppLocale *)locale andVersion:(RMAppVersion *)version
 {
-    if (screenshot.imageData != nil && [screenshot.filename hasPrefix:locale.localeName] == NO) {
-        NSString *versionString = [version.versionString stringByReplacingOccurrencesOfString:@"." withString:@""];
-        versionString = [versionString stringByReplacingOccurrencesOfString:@"-" withString:@""];
-        versionString = [versionString stringByReplacingOccurrencesOfString:@"_" withString:@""];
-        screenshot.filename = [NSString stringWithFormat: @"%@%@%d%d.png",
-                               locale.localeName,
-                               versionString,
-                               (int)screenshot.displayTarget,
-                               (int)screenshot.position];
-    }
+    NSString *versionString = [version.versionString stringByReplacingOccurrencesOfString:@"." withString:@""];
+    versionString = [versionString stringByReplacingOccurrencesOfString:@"-" withString:@""];
+    versionString = [versionString stringByReplacingOccurrencesOfString:@"_" withString:@""];
+    screenshot.filename = [NSString stringWithFormat: @"%@%@%d%d.png",
+                           locale.localeName,
+                           versionString,
+                           (int)screenshot.displayTarget,
+                           (int)screenshot.position];
 }
 
 #pragma mark - Actions
@@ -212,11 +210,38 @@ NSString *const RMAppDataArrangedObjectsKVOPath = @"arrangedObjects";
         if (locale.localeName == activeLocale.localeName)
             continue;
         
-        // Copy Screenshots and set new filename
-        locale.screenshots = [[NSMutableArray alloc] initWithArray:activeLocale.screenshots copyItems:YES];
-        for (RMAppScreenshot *screenshot in locale.screenshots) {
-            [self setScreenshotFileName:screenshot withLocale:locale andVersion:activeVersion];
+        // Copy Screenshots and set filename and position when needed
+        NSMutableArray *newScreenshots = [[NSMutableArray alloc] initWithArray:locale.screenshots];
+        for (RMAppScreenshot *activeScreenshot in activeLocale.screenshots) {
+            if (activeScreenshot.imageData == nil)
+                continue;
+
+            RMAppScreenshot *newScreenshot = [activeScreenshot copy];
+            [self setScreenshotFileName:newScreenshot withLocale:locale andVersion:activeVersion];
+            
+            BOOL add = YES;
+            // on exact position
+            for (RMAppScreenshot *screenshot in locale.screenshots) {
+                if (screenshot.position == activeScreenshot.position && screenshot.displayTarget == activeScreenshot.displayTarget) {
+                    add = NO;
+                    NSUInteger index = [newScreenshots indexOfObject:screenshot];
+                    [newScreenshots replaceObjectAtIndex:index withObject:newScreenshot];
+                }
+            }
+            // on max position
+            if (add) {
+                int maxPosition = 0;
+                for (RMAppScreenshot *screenshot in newScreenshots)
+                    if (screenshot.displayTarget == activeScreenshot.displayTarget)
+                        maxPosition = MAX(screenshot.position, maxPosition);
+                
+                newScreenshot.position = MIN(newScreenshot.position, maxPosition+1);
+                newScreenshot.position = MIN(newScreenshot.position, 5);
+                
+                [newScreenshots addObject:newScreenshot];
+            }
         }
+        locale.screenshots = newScreenshots;
     }
 }
 
@@ -276,7 +301,8 @@ NSString *const RMAppDataArrangedObjectsKVOPath = @"arrangedObjects";
     for (RMAppScreenshot *screenshot in controller.screenshots) {
         screenshot.displayTarget = currentDisplayTarget;
         
-        [self setScreenshotFileName:screenshot withLocale:activeLocale andVersion:activeVersion];
+        if (screenshot.imageData != nil && [screenshot.filename hasPrefix:activeLocale.localeName] == NO)
+            [self setScreenshotFileName:screenshot withLocale:activeLocale andVersion:activeVersion];
     }
     
     // update model with new screenshots for current displayTarget
